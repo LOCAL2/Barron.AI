@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Sparkles,
   ChevronDown,
-  Zap,
   Brain,
   Code,
   Lightbulb,
