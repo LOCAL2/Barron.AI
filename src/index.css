@@ -1,12 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  line-height: 1.5;
+  /* Light Theme - Purple Accent */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f7fc;
+  --bg-tertiary: #f0eef8;
+  --bg-hover: #e8e5f5;
+  --text-primary: #1a1625;
+  --text-secondary: #5c5470;
+  --text-muted: #9490a8;
+  --border-color: rgba(108, 99, 255, 0.15);
+  --accent: #6c63ff;
+  --accent-hover: #5a52e0;
+  --accent-light: rgba(108, 99, 255, 0.1);
+  --user-bubble: linear-gradient(135deg, #6c63ff 0%, #8b5cf6 100%);
+  --error: #ef4444;
+  --shadow-sm: 0 1px 2px rgba(108, 99, 255, 0.05);
+  --shadow-md: 0 4px 12px rgba(108, 99, 255, 0.1);
+  --code-bg: #f0eef8;
+  --pre-bg: #1e1b2e;
+  --pre-text: #e2e0f0;
+  
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
-  color-scheme: light dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark Theme - Purple Accent */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #13111c;
+    --bg-secondary: #1a1726;
+    --bg-tertiary: #252136;
+    --bg-hover: #2f2a45;
+    --text-primary: #f0eef8;
+    --text-secondary: #b8b5c8;
+    --text-muted: #7a7690;
+    --border-color: rgba(108, 99, 255, 0.2);
+    --accent: #8b7dff;
+    --accent-hover: #a599ff;
+    --accent-light: rgba(139, 125, 255, 0.15);
+    --user-bubble: linear-gradient(135deg, #6c63ff 0%, #8b5cf6 100%);
+    --error: #f87171;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --code-bg: rgba(139, 125, 255, 0.15);
+    --pre-bg: #0d0b14;
+    --pre-text: #e2e0f0;
+  }
 }
 
 * {
@@ -15,15 +66,56 @@
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #f8f9fa;
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #1a1a2e;
-  }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-light);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
 }

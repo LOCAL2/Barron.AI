@@ -3,14 +3,42 @@ import type { AIConfig } from '../types/chat';
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-const SYSTEM_PROMPT = `คุณคือ Barron AI ผู้ช่วย AI อัจฉริยะที่พัฒนาโดย Barron Nelly
+const USER_NAME_KEY = 'barron-ai-username';
+
+// ดึงชื่อผู้ใช้จาก localStorage
+export const getUserName = (): string | null => {
+  try {
+    return localStorage.getItem(USER_NAME_KEY);
+  } catch {
+    return null;
+  }
+};
+
+// บันทึกชื่อผู้ใช้
+export const setUserName = (name: string): void => {
+  try {
+    localStorage.setItem(USER_NAME_KEY, name);
+  } catch {
+    // Silent
+  }
+};
+
+// สร้าง system prompt พร้อมชื่อผู้ใช้
+const getSystemPrompt = (): string => {
+  const userName = getUserName();
+  const userContext = userName
+    ? `ผู้ใช้ชื่อ "${userName}" - เรียกชื่อเขาเฉพาะตอนที่เหมาะสมตามธรรมชาติ เช่น ทักทาย ให้กำลังใจ หรือเน้นย้ำ ไม่ต้องเรียกทุกประโยค`
+    : '';
+
+  return `คุณคือ Barron AI ผู้ช่วย AI อัจฉริยะที่พัฒนาโดย Barron Nelly
+${userContext}
 
 กฎสำคัญ:
-1. คุณคือ Barron AI ห้ามบอกว่าคุณเป็น Qwen, ChatGPT, Claude, Llama, Gemini หรือ AI อื่นใด
-2. ถ้าถูกถามว่าคุณคือใคร ให้ตอบว่า "ฉันคือ Barron AI ผู้ช่วย AI ที่พัฒนาโดย Barron Nelly"
-3. ห้ามพูดถึง Alibaba, OpenAI, Anthropic, Meta, Google หรือบริษัทอื่นใดว่าเป็นผู้สร้างคุณ
-4. ตอบเป็นภาษาไทยอย่างเป็นธรรมชาติและเป็นมิตร
-5. ช่วยเหลือผู้ใช้อย่างเต็มที่`;
+1. คุณคือ Barron AI ห้ามบอกว่าเป็น AI อื่น
+2. ถ้าถูกถามว่าคุณคือใคร ตอบว่า "ฉันคือ Barron AI พัฒนาโดย Barron Nelly"
+3. ตอบเป็นภาษาไทยอย่างเป็นธรรมชาติ กระชับ ได้ใจความ
+4. พูดคุยเป็นกันเอง อบอุ่น แต่ไม่เยิ่นเย้อ`;
+};
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -18,43 +46,6 @@ interface ChatMessage {
 }
 
 export const aiService = {
-  async sendMessage(
-    message: string,
-    history: { role: string; parts: { text: string }[] }[],
-    config: AIConfig
-  ) {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...history.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.parts[0].text,
-      })),
-      { role: 'user', content: message },
-    ];
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages,
-        temperature: config.temperature,
-        max_tokens: config.maxOutputTokens,
-        top_p: config.topP,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('เกิดข้อผิดพลาด กรุณาลองใหม่');
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  },
-
   async streamMessage(
     message: string,
     history: { role: string; parts: { text: string }[] }[],
@@ -62,7 +53,7 @@ export const aiService = {
     onChunk: (text: string) => void
   ) {
     const messages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: getSystemPrompt() },
       ...history.map(msg => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.parts[0].text,

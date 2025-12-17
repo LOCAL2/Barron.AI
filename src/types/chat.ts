@@ -35,8 +35,7 @@ export const DEFAULT_CONFIG: AIConfig = {
 };
 
 export const AVAILABLE_MODELS = [
-  { id: 'llama-3.3-70b-versatile', name: 'Barron 70B', description: 'ฉลาดและอเนกประสงค์', params: 70000000000 },
-  { id: 'llama-3.1-8b-instant', name: 'Barron 8B', description: 'เร็วมาก', params: 8000000000 },
-  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Barron Scout', description: 'รุ่นใหม่ล่าสุด', params: 17000000000 },
-  { id: 'qwen/qwen3-32b', name: 'Barron 32B', description: 'สมดุลดี', params: 32000000000 },
+  { id: 'llama-3.3-70b-versatile', name: 'Barron 70B', description: 'ฉลาดและอเนกประสงค์', params: 70621347840 },
+  { id: 'llama-3.1-8b-instant', name: 'Barron 8B', description: 'เร็วมาก', params: 8030261248 },
+  { id: 'qwen/qwen3-32b', name: 'Barron 32B', description: 'สมดุลดี', params: 32514190336 },
 ];
