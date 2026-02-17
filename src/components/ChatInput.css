@@ -236,3 +236,261 @@
     height: 36px;
   }
 }
+/* Microphone Button */
+.mic-button {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-right: 8px; /* เปลี่ยนจาก margin-left เป็น margin-right เพื่อให้อยู่ฝั่งซ้าย */
+}
+
+.mic-button:hover:not(:disabled) {
+  background: var(--text-muted);
+  color: var(--bg-primary);
+}
+
+.mic-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.mic-button.listening {
+  background: #ef4444;
+  color: white;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.mic-button.listening:hover {
+  background: #dc2626;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Listening State */
+.chat-textarea.listening {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.listening-indicator {
+  text-align: center;
+  font-size: 13px;
+  color: #ef4444;
+  margin: 8px 0 0 0;
+  font-weight: 500;
+  animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Speech Error */
+.speech-error {
+  text-align: center;
+  font-size: 12px;
+  color: #ef4444;
+  margin: 8px 0 0 0;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  max-width: 768px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Mobile Adjustments for Voice */
+@media (max-width: 768px) {
+  .mic-button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .listening-indicator {
+    font-size: 12px;
+    margin: 6px 0 0 0;
+  }
+}
+/* Input Model Selector */
+.input-model-selector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.input-model-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 70px;
+  height: 32px;
+}
+
+.input-model-btn:hover:not(:disabled) {
+  background: var(--bg-secondary);
+  border-color: var(--text-muted);
+}
+
+.input-model-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-model-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.input-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.input-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Input Model Dropdown */
+.input-model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: 100;
+  animation: dropdownUp 0.15s ease;
+  overflow: hidden;
+}
+
+@keyframes dropdownUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.input-model-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  text-align: left;
+  transition: background 0.1s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.input-model-item:hover {
+  background: var(--bg-hover);
+}
+
+.input-model-item.active {
+  background: var(--bg-tertiary);
+}
+
+.input-model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.input-model-display-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-model-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Mobile Adjustments for Input Model Selector */
+@media (max-width: 768px) {
+  .input-model-btn {
+    padding: 5px 10px;
+    gap: 6px;
+    min-width: 60px;
+    height: 30px;
+    font-size: 11px;
+  }
+  
+  .input-chevron {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .input-model-dropdown {
+    min-width: 180px;
+  }
+  
+  .input-model-item {
+    padding: 10px 14px;
+  }
+  
+  .input-model-display-name {
+    font-size: 13px;
+  }
+  
+  .input-model-desc {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-model-btn {
+    padding: 4px 8px;
+    gap: 4px;
+    min-width: 50px;
+    height: 28px;
+    font-size: 10px;
+  }
+  
+  .input-model-name {
+    font-size: 10px;
+  }
+  
+  .input-chevron {
+    width: 8px;
+    height: 8px;
+  }
+}

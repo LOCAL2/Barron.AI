@@ -37,6 +37,8 @@ const createNewChat = (): Chat => ({
 const loadChatsFromStorage = (): { chats: Chat[]; activeChatId: string } => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
+    const urlChatId = getChatIdFromUrl();
+    
     if (stored) {
       const data = JSON.parse(stored);
       const chats = data.chats.map((chat: Chat) => ({
@@ -48,19 +50,28 @@ const loadChatsFromStorage = (): { chats: Chat[]; activeChatId: string } => {
           timestamp: new Date(msg.timestamp),
         })),
       }));
+      
       if (chats.length > 0) {
-        const urlChatId = getChatIdFromUrl();
+        // ถ้ามี URL chat ID และ chat นั้นมีอยู่จริง ให้ไปที่ chat นั้น
         if (urlChatId && chats.some((c: Chat) => c.id === urlChatId)) {
           return { chats, activeChatId: urlChatId };
         }
-        const activeExists = chats.some((c: Chat) => c.id === data.activeChatId);
-        const activeChatId = activeExists ? data.activeChatId : chats[0].id;
-        return { chats, activeChatId };
+        
+        // ถ้าไม่มี URL chat ID (เปิดเว็บใหม่) ให้สร้าง chat ใหม่เปล่าๆ
+        if (!urlChatId) {
+          const newChat = createNewChat();
+          return { chats: [newChat, ...chats], activeChatId: newChat.id };
+        }
+        
+        // กรณีอื่นๆ ให้ไปที่ chat แรก
+        return { chats, activeChatId: chats[0].id };
       }
     }
   } catch {
     // Silent
   }
+  
+  // ถ้าไม่มี chat เลย ให้สร้าง chat ใหม่
   const newChat = createNewChat();
   return { chats: [newChat], activeChatId: newChat.id };
 };
@@ -95,11 +106,20 @@ export function useChat() {
   }, [config]);
 
   useEffect(() => {
-    const newUrl = `/c/${activeChatId}`;
-    if (window.location.pathname !== newUrl && !isSharedUrl()) {
-      window.history.pushState({}, '', newUrl);
+    // ถ้าเป็น chat ใหม่ที่ยังไม่มีข้อความ ให้ไปที่ root path
+    const currentChat = chats.find(c => c.id === activeChatId);
+    if (currentChat && currentChat.messages.length === 0) {
+      if (window.location.pathname !== '/' && !isSharedUrl()) {
+        window.history.pushState({}, '', '/');
+      }
+    } else {
+      // ถ้ามีข้อความแล้ว ให้ไปที่ URL ของ chat นั้น
+      const newUrl = `/c/${activeChatId}`;
+      if (window.location.pathname !== newUrl && !isSharedUrl()) {
+        window.history.pushState({}, '', newUrl);
+      }
     }
-  }, [activeChatId]);
+  }, [activeChatId, chats]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -186,6 +206,8 @@ export function useChat() {
           content: '',
           timestamp: new Date(),
           isLoading: true,
+          isThinking: config.mode === 'thinking' || config.mode === 'pro',
+          thinkingContent: '',
         };
 
         const currentChat = chats.find(c => c.id === chatId);
@@ -194,6 +216,12 @@ export function useChat() {
         if (currentMessages.length === 0) {
           const title = content.trim().slice(0, 30) + (content.length > 30 ? '...' : '');
           setChats(prev => prev.map(chat => (chat.id === chatId ? { ...chat, title } : chat)));
+          
+          // อัปเดต URL เมื่อส่งข้อความแรก
+          const newUrl = `/c/${chatId}`;
+          if (window.location.pathname !== newUrl && !isSharedUrl()) {
+            window.history.pushState({}, '', newUrl);
+          }
         }
 
         updateChatMessages(chatId, msgs => [...msgs, userMessage, assistantMessage]);
@@ -208,22 +236,41 @@ export function useChat() {
           parts: [{ text: msg.content }],
         }));
 
-        await aiService.streamMessage(content.trim(), history, config, text => {
+        await aiService.streamMessage(content.trim(), history, config, (text, isThinking) => {
           updateChatMessages(chatId, msgs =>
             msgs.map(msg =>
-              msg.id === assistantMessageId ? { ...msg, content: text, isLoading: false } : msg
+              msg.id === assistantMessageId 
+                ? { 
+                    ...msg, 
+                    content: isThinking ? msg.content : text,
+                    thinkingContent: isThinking ? text : msg.thinkingContent,
+                    isThinking: isThinking,
+                    isLoading: false 
+                  } 
+                : msg
             )
           );
-        });
-      } catch {
-        setError('เกิดข้อผิดพลาด กรุณาลองใหม่');
-        updateChatMessages(chatId, msgs =>
-          msgs.map(msg =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: 'ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่', isLoading: false }
-              : msg
-          )
-        );
+        }, abortControllerRef.current?.signal);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Request aborted') {
+          // ถูก abort โดยผู้ใช้
+          updateChatMessages(chatId, msgs =>
+            msgs.map(msg =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: msg.content || 'การตอบถูกหยุดโดยผู้ใช้', isLoading: false, isThinking: false }
+                : msg
+            )
+          );
+        } else {
+          setError('เกิดข้อผิดพลาด กรุณาลองใหม่');
+          updateChatMessages(chatId, msgs =>
+            msgs.map(msg =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: 'ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่', isLoading: false, isThinking: false }
+                : msg
+            )
+          );
+        }
       } finally {
         setLoadingChats(prev => {
           const next = new Set(prev);
@@ -244,7 +291,7 @@ export function useChat() {
       return next;
     });
     updateChatMessages(activeChatId, msgs =>
-      msgs.map(msg => (msg.isLoading ? { ...msg, isLoading: false } : msg))
+      msgs.map(msg => (msg.isLoading ? { ...msg, isLoading: false, isThinking: false } : msg))
     );
   }, [activeChatId, updateChatMessages]);
 
@@ -264,6 +311,11 @@ export function useChat() {
     setChats(prev => [chat, ...prev]);
     setActiveChatId(chat.id);
     setError(null);
+    
+    // ไปที่ root path เมื่อสร้าง chat ใหม่
+    if (window.location.pathname !== '/' && !isSharedUrl()) {
+      window.history.pushState({}, '', '/');
+    }
   }, []);
 
   const selectChat = useCallback((chatId: string) => {

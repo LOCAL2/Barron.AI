@@ -153,6 +153,8 @@ export function ChatContainer() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [contentSearchQuery, setContentSearchQuery] = useState('');
+  const [showContentSearch, setShowContentSearch] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showWelcome, setShowWelcome] = useState(() => !getUserName());
   const [userName, setUserNameState] = useState(() => getUserName());
@@ -186,6 +188,14 @@ export function ChatContainer() {
 
   const handleNameChange = (name: string) => {
     setUserNameState(name);
+  };
+
+  const handleAvatarChange = (avatar: string | null) => {
+    // Avatar is managed directly in localStorage via setUserAvatar in ai.ts
+    // No need for local state since ChatMessage reads directly from getUserAvatar()
+    if (avatar === null) {
+      // Avatar removed - handled by SettingsModal
+    }
   };
 
   // Refresh suggestions when chat is cleared or new chat
@@ -223,6 +233,9 @@ export function ChatContainer() {
           e.preventDefault();
           newChat();
         } else if (e.key === 'k') {
+          e.preventDefault();
+          setShowContentSearch(prev => !prev);
+        } else if (e.key === 'f') {
           e.preventDefault();
           setShowSearch(prev => !prev);
         }
@@ -290,12 +303,17 @@ export function ChatContainer() {
   };
 
   const filteredChats = searchQuery
-    ? chats.filter(
-        chat =>
-          chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          chat.messages.some(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? chats.filter(chat =>
+        chat.title.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : chats;
+
+  // Filter messages based on content search
+  const filteredMessages = contentSearchQuery
+    ? displayMessages.filter(message =>
+        message.content.toLowerCase().includes(contentSearchQuery.toLowerCase())
+      )
+    : displayMessages;
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === config.model);
   const lastAssistantIndex = [...displayMessages].reverse().findIndex(m => m.role === 'assistant');
@@ -344,7 +362,15 @@ export function ChatContainer() {
             <div ref={messagesEndRef} />
           </div>
 
-          {sharedChat && <ChatInput onSend={() => {}} isLoading={false} isSharedView={true} />}
+          {sharedChat && (
+            <ChatInput 
+              onSend={() => {}} 
+              isLoading={false} 
+              isSharedView={true} 
+              config={config}
+              onConfigChange={() => {}}
+            />
+          )}
         </div>
         {toast && (
           <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
@@ -427,8 +453,8 @@ export function ChatContainer() {
           <div className="header-actions">
             <button
               className="header-btn desktop-only"
-              onClick={() => setShowSearch(prev => !prev)}
-              title="ค้นหา (Ctrl+K)"
+              onClick={() => setShowContentSearch(prev => !prev)}
+              title="ค้นหาในเนื้อหา (Ctrl+K)"
             >
               <Search size={18} />
             </button>
@@ -467,6 +493,40 @@ export function ChatContainer() {
         )}
 
         <div className="chat-messages">
+          {showContentSearch && (
+            <div className="content-search-bar">
+              <div className="content-search-input">
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="ค้นหาในเนื้อหาข้อความ..."
+                  value={contentSearchQuery}
+                  onChange={e => setContentSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                <button 
+                  className="search-close-btn"
+                  onClick={() => {
+                    setShowContentSearch(false);
+                    setContentSearchQuery('');
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              {contentSearchQuery && (
+                <div className="search-results-info">
+                  <div className="search-results-content">
+                    <span className="search-results-icon">🔍</span>
+                    <span className="search-results-text">
+                      พบ <strong>{filteredMessages.length}</strong> ข้อความจาก <strong>{displayMessages.length}</strong> ข้อความ
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           {displayMessages.length === 0 ? (
             <div className="empty-state">
               <div className="empty-hero">
@@ -512,13 +572,15 @@ export function ChatContainer() {
               </div>
             </div>
           ) : (
-            displayMessages.map(message => (
+            (contentSearchQuery ? filteredMessages : displayMessages).map(message => (
               <ChatMessage
                 key={message.id}
                 message={message}
                 onCopy={handleCopy}
                 onRegenerate={regenerate}
                 isLastAssistant={message.id === lastAssistantId}
+                searchQuery={contentSearchQuery}
+                mode={config.mode}
               />
             ))
           )}
@@ -534,7 +596,13 @@ export function ChatContainer() {
           </div>
         )}
 
-        <ChatInput onSend={sendMessage} isLoading={isLoading} isSharedView={false} />
+        <ChatInput 
+          onSend={sendMessage} 
+          isLoading={isLoading} 
+          isSharedView={false} 
+          config={config}
+          onConfigChange={updateConfig}
+        />
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -545,6 +613,7 @@ export function ChatContainer() {
         <SettingsModal 
           onClose={() => setShowSettings(false)} 
           onNameChange={handleNameChange}
+          onAvatarChange={handleAvatarChange}
         />
       )}
     </div>

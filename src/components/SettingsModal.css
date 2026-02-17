@@ -178,3 +178,138 @@
     width: 100%;
   }
 }
+/* Avatar Section */
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avatar-preview {
+  display: flex;
+  justify-content: center;
+}
+
+.avatar-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--border-color);
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 3px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.avatar-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.avatar-btn {
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatar-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+}
+
+.avatar-btn.remove {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.avatar-btn.remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.url-input-section {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.url-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.save-url-btn {
+  padding: 10px 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.save-url-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.save-url-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-success {
+  text-align: center;
+  font-size: 13px;
+  color: #22c55e;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Mobile Responsive for Avatar */
+@media (max-width: 480px) {
+  .avatar-controls {
+    flex-direction: column;
+  }
+  
+  .avatar-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .url-input-section {
+    flex-direction: column;
+  }
+  
+  .save-url-btn {
+    width: 100%;
+  }
+}
