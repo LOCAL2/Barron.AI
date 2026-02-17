@@ -9,7 +9,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  type ChartOptions,
+  type ChartOptions
 } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 
@@ -102,8 +102,8 @@ export const ChartDiagram = ({ data }: ChartDiagramProps) => {
           : `rgba(99, 102, 241, ${data.type === 'line' ? 0.2 : 0.8})`
       ),
       borderColor: dataset.borderColor || '#6366f1',
-      borderWidth: data.type === 'line' ? 2 : 1,
-    })),
+      borderWidth: data.type === 'line' ? 2 : 1
+    }))
   };
 
   return (

@@ -59,18 +59,27 @@ export const ChatMessage = memo(function ChatMessage({
 
   // Function to render content with Chart support
   const renderContent = (content: string) => {
-    // Split content by chart JSON blocks
-    const parts = content.split(/(```chart\n[\s\S]*?\n```)/g);
+    // Split content by chart JSON blocks - รองรับทั้ง \n และไม่มี \n หลัง ```chart
+    const parts = content.split(/(```chart\s*\n?[\s\S]*?\n?```)/g);
     
     return parts.map((part, index) => {
-      // Check if this part is a chart
-      const chartMatch = part.match(/```chart\n([\s\S]*?)\n```/);
+      // Check if this part is a chart - รองรับหลายรูปแบบ
+      const chartMatch = part.match(/```chart\s*\n?([\s\S]*?)\n?```/);
       
       if (chartMatch) {
         try {
-          const chartData = JSON.parse(chartMatch[1]);
+          // ลบ whitespace และ newline ที่ไม่จำเป็นออก
+          const jsonString = chartMatch[1].trim();
+          const chartData = JSON.parse(jsonString);
+          
+          // ตรวจสอบว่ามีข้อมูลที่จำเป็นครบหรือไม่
+          if (!chartData.type || !chartData.labels || !chartData.datasets) {
+            throw new Error('Missing required fields');
+          }
+          
           return <ChartDiagram key={index} data={chartData} />;
         } catch (e) {
+          console.error('Chart parsing error:', e, 'Raw data:', chartMatch[1]);
           return (
             <div key={index} style={{
               color: '#ef4444',
@@ -81,6 +90,12 @@ export const ChatMessage = memo(function ChatMessage({
               margin: '16px 0'
             }}>
               ⚠️ ไม่สามารถแสดงกราฟได้: รูปแบบข้อมูลไม่ถูกต้อง
+              <details style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
+                <summary style={{ cursor: 'pointer' }}>ดูรายละเอียด</summary>
+                <pre style={{ marginTop: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {chartMatch[1]}
+                </pre>
+              </details>
             </div>
           );
         }
