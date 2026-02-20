@@ -163,6 +163,12 @@ export function ChatContainer() {
   const [showSettings, setShowSettings] = useState(false);
   const [showVoiceMode, setShowVoiceMode] = useState(false);
   const [suggestions, setSuggestions] = useState(() => getSuggestions());
+  const [isMobile] = useState(() => {
+    // Detect mobile device by User Agent and touch support
+    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           ('ontouchstart' in window) || 
+           (navigator.maxTouchPoints > 0);
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -476,13 +482,15 @@ export function ChatContainer() {
                 </button>
               </>
             )}
-            <button 
-              onClick={() => setShowVoiceMode(true)} 
-              className="header-btn voice-mode-btn" 
-              title="โหมดสนทนาด้วยเสียง"
-            >
-              <Mic size={18} />
-            </button>
+            {isMobile && (
+              <button 
+                onClick={() => setShowVoiceMode(true)} 
+                className="header-btn voice-mode-btn" 
+                title="โหมดสนทนาด้วยเสียง"
+              >
+                <Mic size={18} />
+              </button>
+            )}
             <button 
               onClick={() => setShowSettings(true)} 
               className="header-btn" 
@@ -636,7 +644,6 @@ export function ChatContainer() {
         <VoiceMode
           onSend={sendMessage}
           isLoading={isLoading}
-          config={config}
           onClose={() => setShowVoiceMode(false)}
           lastAssistantMessage={lastAssistantMessage}
         />

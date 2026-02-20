@@ -1,42 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, X } from 'lucide-react';
+import { Mic, X, Pause, Play } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
-import type { AIConfig } from '../types/chat';
 import './VoiceMode.css';
 
 interface VoiceModeProps {
   onSend: (message: string) => void;
   isLoading: boolean;
-  config: AIConfig;
   onClose: () => void;
   lastAssistantMessage?: string;
 }
 
 export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: VoiceModeProps) {
-  const [isActive, setIsActive] = useState(false);
-  const [conversationState, setConversationState] = useState<'idle' | 'listening' | 'processing' | 'speaking'>('idle');
+  const [conversationState, setConversationState] = useState<'listening' | 'processing' | 'speaking'>('listening');
+  const [userText, setUserText] = useState('');
+  const [aiText, setAiText] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
   const lastProcessedMessageRef = useRef<string>('');
   const isProcessingRef = useRef(false);
-  const hasSpokeRef = useRef(false); // Track if TTS actually started speaking
-  const speakingStartTimeRef = useRef<number>(0); // Track when TTS started
-  const timestampRef = useRef<{ [key: string]: number }>({}); // Track timestamps
-
-  const logWithTime = (message: string, key?: string) => {
-    const now = Date.now();
-    if (key) {
-      const prev = timestampRef.current[key];
-      if (prev) {
-        const diff = ((now - prev) / 1000).toFixed(2);
-        console.log(`[${new Date().toLocaleTimeString('th-TH')}] ${message} (${diff}s)`);
-      } else {
-        console.log(`[${new Date().toLocaleTimeString('th-TH')}] ${message}`);
-      }
-      timestampRef.current[key] = now;
-    } else {
-      console.log(`[${new Date().toLocaleTimeString('th-TH')}] ${message}`);
-    }
-  };
+  const hasSpokeRef = useRef(false);
+  const speakingStartTimeRef = useRef<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
   
   const {
     transcript,
@@ -55,6 +42,8 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
     speak,
     stop: stopSpeaking,
     isSpeaking,
+    pause: pauseSpeaking,
+    resume: resumeSpeaking,
     isSupported: ttsSupported
   } = useTextToSpeech({
     language: 'th-TH',
@@ -63,38 +52,104 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
     volume: 1.0
   });
 
+  // Initialize audio visualization
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        
+        analyser.fftSize = 256;
+        microphone.connect(analyser);
+        
+        audioContextRef.current = audioContext;
+        analyserRef.current = analyser;
+        
+        // Start visualization
+        visualize();
+      } catch (error) {
+        console.error('Failed to initialize audio:', error);
+      }
+    };
+
+    initAudio();
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  // Audio visualization
+  const visualize = () => {
+    if (!analyserRef.current) return;
+
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    
+    const draw = () => {
+      if (!analyserRef.current) return;
+      
+      analyserRef.current.getByteFrequencyData(dataArray);
+      const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+      setAudioLevel(average / 255);
+      
+      animationFrameRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+  };
+
+  // Auto-start listening when component mounts
+  useEffect(() => {
+    startListening();
+  }, []);
+
   // Handle transcript completion - send to AI
   useEffect(() => {
     if (transcript && !isListening && conversationState === 'listening' && !isProcessingRef.current) {
-      logWithTime(`User finished speaking: ${transcript}`, 'userSpoke');
+      console.log('User finished speaking:', transcript);
       isProcessingRef.current = true;
+      setUserText(transcript);
       setConversationState('processing');
       onSend(transcript);
       resetTranscript();
     }
   }, [transcript, isListening, conversationState, onSend, resetTranscript]);
 
+  // Update user text while speaking
+  useEffect(() => {
+    if (transcript && conversationState === 'listening') {
+      setUserText(transcript);
+    }
+  }, [transcript, conversationState]);
+
   // Handle AI response - speak it
   useEffect(() => {
     if (
       lastAssistantMessage && 
       !isLoading && 
-      conversationState === 'processing' && 
-      isActive &&
+      conversationState === 'processing' &&
       lastAssistantMessage !== lastProcessedMessageRef.current
     ) {
-      logWithTime(`AI finished, speaking: ${lastAssistantMessage.substring(0, 50)}`, 'aiResponded');
+      console.log('AI finished, speaking:', lastAssistantMessage.substring(0, 50));
       lastProcessedMessageRef.current = lastAssistantMessage;
-      hasSpokeRef.current = false; // Reset flag
+      setAiText(lastAssistantMessage);
+      hasSpokeRef.current = false;
       setConversationState('speaking');
       speak(lastAssistantMessage);
     }
-  }, [lastAssistantMessage, isLoading, conversationState, speak, isActive]);
+  }, [lastAssistantMessage, isLoading, conversationState, speak]);
 
   // Track when TTS actually starts speaking
   useEffect(() => {
     if (isSpeaking && conversationState === 'speaking' && !hasSpokeRef.current) {
-      logWithTime('TTS actually started speaking', 'ttsStarted');
+      console.log('TTS actually started speaking');
       hasSpokeRef.current = true;
       speakingStartTimeRef.current = Date.now();
     }
@@ -102,113 +157,85 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
 
   // Handle speaking completion - auto-listen again
   useEffect(() => {
-    // Only proceed if we actually spoke (not just state change)
-    if (!isSpeaking && conversationState === 'speaking' && isActive && hasSpokeRef.current) {
+    if (!isSpeaking && conversationState === 'speaking' && hasSpokeRef.current) {
       const speakingDuration = Date.now() - speakingStartTimeRef.current;
-      logWithTime(`TTS stopped (duration: ${(speakingDuration / 1000).toFixed(2)}s)`, 'ttsStopped');
+      console.log(`TTS stopped (duration: ${(speakingDuration / 1000).toFixed(2)}s)`);
       
-      // Only proceed if TTS actually spoke for at least 500ms (prevent false stops)
       if (speakingDuration < 500) {
-        logWithTime('⚠️ TTS stopped too quickly, ignoring...');
+        console.log('⚠️ TTS stopped too quickly, ignoring...');
         return;
       }
       
-      logWithTime('Finished speaking, starting to listen again', 'ttsFinished');
+      console.log('Finished speaking, starting to listen again');
       
-      const timeoutId = setTimeout(() => {
-        if (isActive && conversationState === 'speaking') {
-          logWithTime('Actually starting to listen now', 'listeningRestarted');
+      setTimeout(() => {
+        if (conversationState === 'speaking') {
+          console.log('Actually starting to listen now');
           isProcessingRef.current = false;
           hasSpokeRef.current = false;
           speakingStartTimeRef.current = 0;
+          setUserText('');
           setConversationState('listening');
           startListening();
-        } else {
-          logWithTime('Cancelled - state changed or inactive');
         }
       }, 800);
-
-      // Cleanup to prevent double execution
-      return () => {
-        clearTimeout(timeoutId);
-      };
     }
-  }, [isSpeaking, conversationState, startListening, isActive]);
+  }, [isSpeaking, conversationState, startListening]);
 
-  const handleToggleVoice = useCallback(() => {
-    if (isActive) {
-      logWithTime('Stopping voice mode');
-      setIsActive(false);
-      setConversationState('idle');
-      stopListening();
+  // Handle pause/resume
+  const handleTogglePause = useCallback(() => {
+    if (isPaused) {
+      resumeSpeaking();
+      setIsPaused(false);
+    } else {
+      pauseSpeaking();
+      setIsPaused(true);
+    }
+  }, [isPaused, pauseSpeaking, resumeSpeaking]);
+
+  // Handle interrupt - user wants to speak while AI is speaking
+  const handleInterrupt = useCallback(() => {
+    if (conversationState === 'speaking') {
+      console.log('User interrupted AI');
       stopSpeaking();
       isProcessingRef.current = false;
       hasSpokeRef.current = false;
-      speakingStartTimeRef.current = 0;
-      lastProcessedMessageRef.current = '';
-      timestampRef.current = {};
-    } else {
-      logWithTime('Starting voice mode');
-      setIsActive(true);
-      setConversationState('listening');
-      isProcessingRef.current = false;
-      hasSpokeRef.current = false;
-      speakingStartTimeRef.current = 0;
-      lastProcessedMessageRef.current = '';
-      timestampRef.current = {};
-      startListening();
-    }
-  }, [isActive, startListening, stopListening, stopSpeaking]);
-
-  const handleStopSpeaking = useCallback(() => {
-    logWithTime('User stopped speaking manually');
-    stopSpeaking();
-    if (isActive) {
-      isProcessingRef.current = false;
-      hasSpokeRef.current = false;
-      speakingStartTimeRef.current = 0;
+      setUserText('');
       setConversationState('listening');
       startListening();
     }
-  }, [stopSpeaking, startListening, isActive]);
+  }, [conversationState, stopSpeaking, startListening]);
 
+  // Handle close - stop everything immediately
   const handleClose = useCallback(() => {
-    logWithTime('Closing voice mode');
-    setIsActive(false);
-    setConversationState('idle');
+    console.log('Closing voice mode - stopping all audio');
     stopListening();
     stopSpeaking();
-    isProcessingRef.current = false;
-    hasSpokeRef.current = false;
-    speakingStartTimeRef.current = 0;
-    lastProcessedMessageRef.current = '';
-    timestampRef.current = {};
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
     onClose();
   }, [stopListening, stopSpeaking, onClose]);
 
   const getStateText = () => {
     switch (conversationState) {
       case 'listening':
-        return transcript || 'กำลังฟัง...';
+        return 'กำลังฟัง...';
       case 'processing':
-        return 'กำลังประมวลผล...';
+        return 'กำลังคิด...';
       case 'speaking':
-        return 'กำลังพูด...';
-      default:
-        return 'พร้อมเริ่มสนทนา';
+        return 'กำลังตอบ...';
     }
   };
 
-  const getStateIcon = () => {
+  const getStateColor = () => {
     switch (conversationState) {
       case 'listening':
-        return <Mic size={48} />;
+        return '#3b82f6'; // blue
       case 'processing':
-        return <div className="voice-processing-spinner" />;
+        return '#f59e0b'; // amber
       case 'speaking':
-        return <Volume2 size={48} />;
-      default:
-        return <MicOff size={48} />;
+        return '#10b981'; // green
     }
   };
 
@@ -220,41 +247,96 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
         </button>
 
         <div className="voice-mode-content">
-          <div className={`voice-mode-icon ${conversationState}`}>
-            {getStateIcon()}
+          {/* Status indicator */}
+          <div className="voice-status">
+            <span className="voice-status-text">{getStateText()}</span>
           </div>
 
-          <div className="voice-mode-state">
-            <h2>{getStateText()}</h2>
-            {conversationState === 'listening' && transcript && (
-              <p className="voice-transcript">{transcript}</p>
+          {/* Audio waveform visualization */}
+          <div className="voice-waveform">
+            {[...Array(40)].map((_, i) => {
+              const height = conversationState === 'listening' 
+                ? Math.max(0.1, audioLevel + Math.random() * 0.3)
+                : conversationState === 'speaking'
+                ? Math.max(0.1, 0.5 + Math.sin(Date.now() / 100 + i) * 0.4)
+                : 0.1;
+              
+              return (
+                <div
+                  key={i}
+                  className="waveform-bar"
+                  style={{
+                    height: `${height * 100}%`,
+                    backgroundColor: getStateColor(),
+                    opacity: conversationState === 'processing' ? 0.3 : 1,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Conversation text */}
+          <div className="voice-conversation">
+            {userText && (
+              <div className="voice-message user-message">
+                <div className="message-label">คุณ:</div>
+                <div className="message-text">{userText}</div>
+              </div>
             )}
-            {conversationState === 'speaking' && lastAssistantMessage && (
-              <p className="voice-response">{lastAssistantMessage}</p>
+            
+            {aiText && (
+              <div className="voice-message ai-message">
+                <div className="message-label">AI:</div>
+                <div className="message-text">{aiText}</div>
+              </div>
             )}
           </div>
 
-          <div className="voice-mode-controls">
+          {/* Controls */}
+          <div className="voice-controls">
             {conversationState === 'speaking' && (
+              <>
+                <button
+                  className="voice-control-btn interrupt-btn"
+                  onClick={handleInterrupt}
+                  aria-label="พูดแทรก"
+                >
+                  <Mic size={24} />
+                  <span>พูดแทรก</span>
+                </button>
+
+                <button
+                  className="voice-control-btn pause-btn"
+                  onClick={handleTogglePause}
+                  aria-label={isPaused ? 'เล่นต่อ' : 'หยุดชั่วคราว'}
+                >
+                  {isPaused ? <Play size={24} /> : <Pause size={24} />}
+                  <span>{isPaused ? 'เล่นต่อ' : 'พัก'}</span>
+                </button>
+              </>
+            )}
+
+            {conversationState === 'listening' && (
               <button
-                className="voice-control-btn stop-speaking"
-                onClick={handleStopSpeaking}
-                aria-label="หยุดพูด"
+                className="voice-control-btn listening-btn"
+                disabled
+                aria-label="กำลังฟัง"
               >
-                <VolumeX size={24} />
-                <span>หยุดพูด</span>
+                <Mic size={24} className="pulse-icon" />
+                <span>กำลังฟัง...</span>
               </button>
             )}
 
-            <button
-              className={`voice-control-btn toggle-voice ${isActive ? 'active' : ''}`}
-              onClick={handleToggleVoice}
-              disabled={conversationState === 'processing'}
-              aria-label={isActive ? 'หยุดโหมดเสียง' : 'เริ่มโหมดเสียง'}
-            >
-              {isActive ? <MicOff size={24} /> : <Mic size={24} />}
-              <span>{isActive ? 'หยุดสนทนา' : 'เริ่มสนทนา'}</span>
-            </button>
+            {conversationState === 'processing' && (
+              <button
+                className="voice-control-btn processing-btn"
+                disabled
+                aria-label="กำลังประมวลผล"
+              >
+                <div className="spinner-icon" />
+                <span>กำลังคิด...</span>
+              </button>
+            )}
           </div>
 
           {speechError && (
@@ -267,9 +349,9 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
         </div>
 
         <div className="voice-mode-info">
-          <p>• พูดเพื่อส่งข้อความ</p>
-          <p>• AI จะตอบกลับด้วยเสียง</p>
-          <p>• สนทนาต่อเนื่องอัตโนมัติ</p>
+          <p>• พูดเพื่อสนทนากับ AI</p>
+          <p>• สามารถพูดแทรกได้ตลอดเวลา</p>
+          <p>• กดปิดเพื่อออกจากโหมดเสียง</p>
         </div>
       </div>
     </div>
