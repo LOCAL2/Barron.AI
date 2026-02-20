@@ -482,7 +482,8 @@ export function ChatContainer() {
                 </button>
               </>
             )}
-            {isMobile && (
+            {/* Voice Mode - ปิดไว้ชั่วคราว */}
+            {false && isMobile && (
               <button 
                 onClick={() => setShowVoiceMode(true)} 
                 className="header-btn voice-mode-btn" 
