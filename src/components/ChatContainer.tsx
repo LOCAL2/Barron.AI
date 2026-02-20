@@ -42,6 +42,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Mic,
 } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -49,6 +50,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { Toast } from './Toast';
 import { WelcomeModal } from './WelcomeModal';
 import { SettingsModal } from './SettingsModal';
+import { VoiceMode } from './VoiceMode';
 import { useChat } from '../hooks/useChat';
 import { AVAILABLE_MODELS } from '../types/chat';
 import { getUserName, setUserName } from '../services/ai';
@@ -159,6 +161,7 @@ export function ChatContainer() {
   const [showWelcome, setShowWelcome] = useState(() => !getUserName());
   const [userName, setUserNameState] = useState(() => getUserName());
   const [showSettings, setShowSettings] = useState(false);
+  const [showVoiceMode, setShowVoiceMode] = useState(false);
   const [suggestions, setSuggestions] = useState(() => getSuggestions());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -321,6 +324,11 @@ export function ChatContainer() {
     lastAssistantIndex !== -1
       ? displayMessages[displayMessages.length - 1 - lastAssistantIndex]?.id
       : null;
+  
+  // Get last assistant message for voice mode
+  const lastAssistantMessage = lastAssistantIndex !== -1
+    ? displayMessages[displayMessages.length - 1 - lastAssistantIndex]?.content
+    : undefined;
 
   // Shared view - readonly
   if (isSharedView) {
@@ -469,6 +477,13 @@ export function ChatContainer() {
               </>
             )}
             <button 
+              onClick={() => setShowVoiceMode(true)} 
+              className="header-btn voice-mode-btn" 
+              title="โหมดสนทนาด้วยเสียง"
+            >
+              <Mic size={18} />
+            </button>
+            <button 
               onClick={() => setShowSettings(true)} 
               className="header-btn" 
               title="ตั้งค่า"
@@ -614,6 +629,16 @@ export function ChatContainer() {
           onClose={() => setShowSettings(false)} 
           onNameChange={handleNameChange}
           onAvatarChange={handleAvatarChange}
+        />
+      )}
+      
+      {showVoiceMode && (
+        <VoiceMode
+          onSend={sendMessage}
+          isLoading={isLoading}
+          config={config}
+          onClose={() => setShowVoiceMode(false)}
+          lastAssistantMessage={lastAssistantMessage}
         />
       )}
     </div>
