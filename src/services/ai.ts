@@ -393,7 +393,7 @@ export const aiService = {
       try {
         // แสดงสถานะการค้นหา
         onChunk('กำลังค้นหาข้อมูลจากอินเทอร์เน็ต...', true);
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         searchResults = await searchWeb(message);
         
@@ -402,10 +402,10 @@ export const aiService = {
         } else {
           onChunk('ไม่พบข้อมูลจากการค้นหา กำลังใช้ความรู้ที่มีอยู่...', true);
         }
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         onChunk('เกิดข้อผิดพลาดในการค้นหา กำลังใช้ความรู้ที่มีอยู่...', true);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
@@ -497,8 +497,8 @@ export const aiService = {
                     // Send thinking content
                     onChunk(thinkingContent, true);
                     
-                    // เพิ่มการหน่วงเวลาให้นานขึ้นก่อนแสดงคำตอบจริง
-                    const delayTime = config.mode === 'pro' ? 1500 : 1000;
+                    // เพิ่มการหน่วงเวลาก่อนแสดงคำตอบจริง
+                    const delayTime = config.mode === 'pro' ? 500 : 300;
                     await new Promise(resolve => setTimeout(resolve, delayTime));
                     
                     // Send main content and mark thinking as complete
@@ -513,7 +513,7 @@ export const aiService = {
                   if (match && match[1]) {
                     onChunk(match[1].trim(), true);
                     // เพิ่มการหน่วงเวลาให้ thinking ดูช้าลง
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 30));
                   }
                 } else if (!isInThinking && thinkingComplete) {
                   // Send regular content after thinking is done
@@ -538,7 +538,7 @@ export const aiService = {
               }
               
               // Add delay for slower response - เพิ่มการหน่วงเวลาตามโหมด
-              const chunkDelay = config.mode === 'thinking' ? 80 : config.mode === 'pro' ? 100 : 50;
+              const chunkDelay = config.mode === 'thinking' ? 30 : config.mode === 'pro' ? 40 : 20;
               if (chunkCount % 2 === 0) {
                 await new Promise(resolve => setTimeout(resolve, chunkDelay));
               }
