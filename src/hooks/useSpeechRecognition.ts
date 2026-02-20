@@ -88,6 +88,7 @@ export function useSpeechRecognition(
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const silenceTimerRef = useRef<number | null>(null);
 
   // Check if speech recognition is supported
   const isSupported = typeof window !== 'undefined' && 
@@ -96,6 +97,16 @@ export function useSpeechRecognition(
   const resetTranscript = useCallback(() => {
     setTranscript('');
   }, []);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  }, [isListening]);
 
   const startListening = useCallback(() => {
     if (!isSupported) {
@@ -112,7 +123,7 @@ export function useSpeechRecognition(
       recognition.continuous = continuous;
       recognition.interimResults = interimResults;
       recognition.lang = language;
-      recognition.maxAlternatives = 1; // เพิ่มเพื่อประสิทธิภาพ
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -132,17 +143,29 @@ export function useSpeechRecognition(
           }
         }
 
-        setTranscript(finalTranscript || interimTranscript);
+        const currentTranscript = finalTranscript || interimTranscript;
+        setTranscript(currentTranscript);
+
+        // ถ้าได้ final result แล้ว ให้หยุดฟังทันที
+        if (finalTranscript && !continuous) {
+          console.log('Got final transcript, stopping in 500ms');
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          silenceTimerRef.current = window.setTimeout(() => {
+            if (recognitionRef.current) {
+              recognitionRef.current.stop();
+            }
+          }, 500);
+        }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        // ไม่แสดง error สำหรับ no-speech เพราะเป็นเรื่องปกติ
         if (event.error === 'no-speech') {
           setIsListening(false);
           return;
         }
         
-        // แสดง error message ที่เป็นมิตรกับผู้ใช้
         let errorMessage = 'เกิดข้อผิดพลาดในการรู้จำเสียง';
         
         switch (event.error) {
@@ -174,6 +197,10 @@ export function useSpeechRecognition(
 
       recognition.onend = () => {
         setIsListening(false);
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
       };
 
       recognitionRef.current = recognition;
@@ -183,12 +210,6 @@ export function useSpeechRecognition(
       setIsListening(false);
     }
   }, [isSupported, isListening, continuous, interimResults, language]);
-
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-    }
-  }, [isListening]);
 
   useEffect(() => {
     return () => {

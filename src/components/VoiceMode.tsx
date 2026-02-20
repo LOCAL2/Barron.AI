@@ -141,10 +141,14 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
       lastProcessedMessageRef.current = lastAssistantMessage;
       setAiText(lastAssistantMessage);
       hasSpokeRef.current = false;
+      
+      // หยุดฟังก่อนที่ AI จะพูด
+      stopListening();
+      
       setConversationState('speaking');
       speak(lastAssistantMessage);
     }
-  }, [lastAssistantMessage, isLoading, conversationState, speak]);
+  }, [lastAssistantMessage, isLoading, conversationState, speak, stopListening]);
 
   // Track when TTS actually starts speaking
   useEffect(() => {
@@ -166,10 +170,12 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
         return;
       }
       
-      console.log('Finished speaking, starting to listen again');
+      console.log('Finished speaking, will start listening in 1 second');
       
+      // รอให้แน่ใจว่า AI พูดจบจริงๆ แล้วค่อยเริ่มฟังใหม่
       setTimeout(() => {
-        if (conversationState === 'speaking') {
+        // ตรวจสอบอีกครั้งว่ายังอยู่ใน speaking state และไม่ได้พูดอยู่
+        if (conversationState === 'speaking' && !isSpeaking) {
           console.log('Actually starting to listen now');
           isProcessingRef.current = false;
           hasSpokeRef.current = false;
@@ -178,7 +184,7 @@ export function VoiceMode({ onSend, isLoading, onClose, lastAssistantMessage }: 
           setConversationState('listening');
           startListening();
         }
-      }, 800);
+      }, 1000);
     }
   }, [isSpeaking, conversationState, startListening]);
 
