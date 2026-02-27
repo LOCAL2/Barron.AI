@@ -1,8 +1,10 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { User, Bot, Copy, Check, RefreshCw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { getUserAvatar } from '../services/ai';
+import { generateImage } from '../services/imageGeneration';
 import { ChartDiagram } from './ChartDiagram';
+import { ImageGenerator } from './ImageGenerator';
 import type { Message } from '../types/chat';
 import './ChatMessage.css';
 
@@ -57,22 +59,20 @@ export const ChatMessage = memo(function ChatMessage({
     );
   };
 
-  // Function to render content with Chart support
+  // Function to render content with Chart and Image support
   const renderContent = (content: string) => {
-    // Split content by chart JSON blocks - รองรับทั้ง \n และไม่มี \n หลัง ```chart
-    const parts = content.split(/(```chart\s*\n?[\s\S]*?\n?```)/g);
+    // Split content by chart and image JSON blocks
+    const parts = content.split(/(```(?:chart|image)\s*\n?[\s\S]*?\n?```)/g);
     
     return parts.map((part, index) => {
-      // Check if this part is a chart - รองรับหลายรูปแบบ
+      // Check if this part is a chart
       const chartMatch = part.match(/```chart\s*\n?([\s\S]*?)\n?```/);
       
       if (chartMatch) {
         try {
-          // ลบ whitespace และ newline ที่ไม่จำเป็นออก
           const jsonString = chartMatch[1].trim();
           const chartData = JSON.parse(jsonString);
           
-          // ตรวจสอบว่ามีข้อมูลที่จำเป็นครบหรือไม่
           if (!chartData.type || !chartData.labels || !chartData.datasets) {
             throw new Error('Missing required fields');
           }
@@ -99,6 +99,13 @@ export const ChatMessage = memo(function ChatMessage({
             </div>
           );
         }
+      }
+      
+      // Check if this part is an image
+      const imageMatch = part.match(/```image\s*\n?([\s\S]*?)\n?```/);
+      
+      if (imageMatch) {
+        return <ImageGenerator key={index} jsonData={imageMatch[1].trim()} />;
       }
       
       // Regular markdown content

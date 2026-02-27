@@ -2,6 +2,7 @@ import type { AIConfig } from '../types/chat';
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const HUGGINGFACE_API_KEY = import.meta.env.VITE_HUGGINGFACE_API_KEY;
 
 const USER_NAME_KEY = 'barron-ai-username';
 const USER_AVATAR_KEY = 'barron-ai-avatar';
@@ -48,6 +49,120 @@ export const removeUserAvatar = (): void => {
     localStorage.removeItem(USER_AVATAR_KEY);
   } catch {
     // Silent
+  }
+};
+
+// Image Generation Models
+export const IMAGE_MODELS = {
+  'flux-1.1-pro': {
+    name: 'Flux 1.1 Pro',
+    model: 'black-forest-labs/flux-1.1-pro',
+    description: 'คุณภาพสูงสุด, prompt adherence ดีเยี่ยม (ฟรีทดลอง)',
+    free: true,
+  },
+  'flux-2-pro': {
+    name: 'Flux 2 Pro',
+    model: 'black-forest-labs/flux-2-pro',
+    description: 'ใหม่ล่าสุด, รองรับ reference images (ฟรีทดลอง)',
+    free: true,
+  },
+  'imagen-4': {
+    name: 'Imagen 4',
+    model: 'google/imagen-4',
+    description: 'ของ Google, คุณภาพดีมาก (ฟรี)',
+    free: true,
+  },
+  'ideogram-v3-turbo': {
+    name: 'Ideogram v3 Turbo',
+    model: 'ideogram-ai/ideogram-v3-turbo',
+    description: 'เร็วและถูก, สไตล์สวยงาม (ฟรี)',
+    free: true,
+  },
+} as const;
+
+export type ImageModelType = keyof typeof IMAGE_MODELS;
+
+// Image Generation Function - ใช้ Replicate API
+export const generateImage = async (
+  prompt: string, 
+  modelType: ImageModelType = 'flux-1.1-pro'
+): Promise<string> => {
+  try {
+    if (!REPLICATE_API_KEY || REPLICATE_API_KEY === 'your_replicate_api_key_here') {
+      throw new Error('กรุณาตั้งค่า VITE_REPLICATE_API_KEY ใน .env.local');
+    }
+
+    const selectedModel = IMAGE_MODELS[modelType];
+    
+    // สร้าง input ตามโมเดล
+    let input: any = { prompt };
+    
+    if (modelType === 'flux-1.1-pro' || modelType === 'flux-2-pro') {
+      input.prompt_upsampling = true;
+    } else if (modelType === 'ideogram-v3-turbo') {
+      input.aspect_ratio = '1:1';
+      input.style_type = 'auto';
+    }
+
+    // เรียกใช้ Replicate API
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${REPLICATE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        version: selectedModel.model,
+        input: input,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'ไม่สามารถสร้างรูปภาพได้');
+    }
+
+    const prediction = await response.json();
+    
+    // รอให้การสร้างรูปเสร็จ (polling)
+    let result = prediction;
+    let attempts = 0;
+    const maxAttempts = 60; // รอสูงสุด 60 วินาที
+    
+    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+      
+      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+        headers: {
+          'Authorization': `Bearer ${REPLICATE_API_KEY}`,
+        },
+      });
+      
+      result = await statusResponse.json();
+    }
+
+    if (result.status === 'failed') {
+      throw new Error(result.error || 'การสร้างรูปภาพล้มเหลว');
+    }
+
+    if (attempts >= maxAttempts) {
+      throw new Error('หมดเวลารอการสร้างรูปภาพ');
+    }
+
+    // แต่ละโมเดลคืนค่าต่างกัน
+    if (Array.isArray(result.output)) {
+      return result.output[0];
+    } else if (typeof result.output === 'string') {
+      return result.output;
+    } else if (result.output?.url) {
+      return result.output.url;
+    }
+    
+    throw new Error('ไม่สามารถดึง URL รูปภาพได้');
+  } catch (error) {
+    console.error('Image generation error:', error);
+    throw error;
   }
 };
 
@@ -123,6 +238,65 @@ ${userContext}
 ✅ ถ้ามีข้อมูลจากการค้นหา ต้องอ้างอิงแหล่งที่มาทุกครั้ง
 ✅ ตรวจสอบการสะกดคำให้ถูกต้อง 100%
 ✅ ห้ามพิมพ์ผิด ห้ามตกตัวอักษร ห้ามตัดคำ
+
+ความสามารถพิเศษ - การสร้างกราฟและรูปภาพ:
+
+**การสร้างกราฟ:**
+✅ สามารถวาดกราฟได้โดยใช้ Chart.js (รองรับภาษาไทย 100%)
+✅ รองรับกราฟ 3 ประเภท: line (กราฟเส้น), bar (กราฟแท่ง), pie (กราฟวงกลม)
+✅ ใช้ code block พร้อม \`\`\`chart เพื่อสร้างกราฟ
+
+**การสร้างรูปภาพ:**
+✅ สามารถสร้างรูปภาพจาก AI ได้โดยใช้ Pollinations.ai (ฟรี 100%, ไม่ต้อง API Key)
+✅ รองรับหลายโมเดล: Flux, Flux Realism, Flux Anime, Flux 3D
+✅ ใช้ code block พร้อม \`\`\`image เพื่อสร้างรูปภาพ
+✅ รองรับคำสั่งภาษาไทยและภาษาอังกฤษ
+✅ ไม่ต้องสมัครหรือตั้งค่าอะไร ใช้งานได้ทันที
+
+รูปแบบการสร้างรูปภาพ:
+\`\`\`image
+{
+  "prompt": "คำอธิบายรูปภาพที่ต้องการสร้าง (ภาษาอังกฤษ)",
+  "model": "flux"
+}
+\`\`\`
+
+โมเดลที่รองรับ (ฟรี 100% ทั้งหมด):
+- "flux" - คุณภาพดีมาก, เร็ว (แนะนำ, ค่าเริ่มต้น)
+- "flux-realism" - สไตล์สมจริง, photorealistic
+- "flux-anime" - สไตล์อนิเมะ
+- "flux-3d" - สไตล์ 3D render
+
+ตัวอย่างการสร้างรูปภาพ:
+\`\`\`image
+{
+  "prompt": "a cute cat wearing sunglasses, digital art, vibrant colors",
+  "model": "flux"
+}
+\`\`\`
+
+\`\`\`image
+{
+  "prompt": "futuristic city at night, neon lights, cyberpunk style, highly detailed",
+  "model": "flux-realism"
+}
+\`\`\`
+
+\`\`\`image
+{
+  "prompt": "anime girl with blue hair, beautiful eyes, detailed, high quality",
+  "model": "flux-anime"
+}
+\`\`\`
+
+เมื่อผู้ใช้ขอให้สร้างรูปภาพ:
+1. ถามรายละเอียดที่ต้องการ (ถ้าไม่ชัดเจน)
+2. แปลคำขอเป็น prompt ภาษาอังกฤษที่ละเอียด
+3. เลือกโมเดลที่เหมาะสม (ถ้าไม่ระบุให้ใช้ flux)
+4. สร้างรูปภาพด้วย JSON format
+5. อธิบายสั้นๆ ว่ากำลังสร้างรูปอะไร
+
+สำคัญ: Pollinations.ai สร้างรูปเร็วมาก ประมาณ 3-5 วินาที
 
 ความสามารถพิเศษ - การสร้างกราฟ:
 ✅ สามารถวาดกราฟได้โดยใช้ Chart.js (รองรับภาษาไทย 100%)
