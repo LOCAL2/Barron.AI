@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { User, Bot, Copy, Check, RefreshCw, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { User, Bot, Copy, Check, RefreshCw, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
 import { getUserAvatar } from '../services/ai';
 import { generateImage } from '../services/imageGeneration';
 import { ChartDiagram } from './ChartDiagram';
@@ -229,6 +229,14 @@ export const ChatMessage = memo(function ChatMessage({
               <span className="waiting-text">
                 {mode === 'pro' ? 'รอการวิจัยเสร็จสิ้น...' : 'รอการคิดเสร็จสิ้น...'}
               </span>
+            </div>
+          ) : message.isError ? (
+            <div className="message-error">
+              <AlertCircle size={20} className="error-icon" />
+              <div className="error-content">
+                <p>ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ หรือเซิร์ฟเวอร์ไม่ตอบสนอง</p>
+                <p className="error-subtext">กรุณาลองใหม่อีกครั้ง หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ</p>
+              </div>
             </div>
           ) : (
             <div className="markdown-content">

@@ -266,7 +266,7 @@ export function useChat() {
           updateChatMessages(chatId, msgs =>
             msgs.map(msg =>
               msg.id === assistantMessageId
-                ? { ...msg, content: 'ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่', isLoading: false, isThinking: false }
+                ? { ...msg, content: 'ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่', isLoading: false, isThinking: false, isError: true }
                 : msg
             )
           );

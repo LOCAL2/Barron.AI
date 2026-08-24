@@ -6,6 +6,7 @@ export interface Message {
   isLoading?: boolean;
   isThinking?: boolean;
   thinkingContent?: string;
+  isError?: boolean;
 }
 
 export interface Chat {

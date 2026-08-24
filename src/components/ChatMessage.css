@@ -985,3 +985,33 @@
     font-size: 11px;
   }
 }
+
+/* Error Message State */
+.message-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #ef4444;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.message-error .error-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.message-error .error-content p {
+  margin: 0 0 4px 0;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.message-error .error-content .error-subtext {
+  margin: 0;
+  font-weight: 400;
+  font-size: 13px;
+  opacity: 0.8;
+}
