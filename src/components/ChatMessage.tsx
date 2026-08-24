@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { User, Bot, Copy, Check, RefreshCw, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
+import { User, Bot, Copy, Check, RefreshCw, ThumbsUp, ThumbsDown, AlertCircle, ChevronDown, BrainCircuit, Search } from 'lucide-react';
 import { getUserAvatar } from '../services/ai';
 import { generateImage } from '../services/imageGeneration';
 import { ChartDiagram } from './ChartDiagram';
@@ -138,78 +138,92 @@ export const ChatMessage = memo(function ChatMessage({
         )}
       </div>
       <div className="message-wrapper">
-        {/* Thinking Section - แยกออกมานอกกรอบคำตอบ */}
-        {message.isThinking && (
-          <div className={`thinking-indicator ${mode === 'pro' ? 'research-mode' : ''}`}>
-            <div className="thinking-header">
-              <div className="thinking-icon">
-                {mode === 'pro' ? (
-                  <>
-                    <div className="research-icon">•</div>
-                    <div className="research-dots">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="thinking-brain">•</div>
-                    <div className="thinking-dots">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </>
-                )}
+        <div className="ai-process-container">
+          {/* --- ULTRA PREMIUM DEEP RESEARCH UI --- */}
+          {message.isThinking && mode === 'pro' && (
+            <div className="deep-research-live">
+              <div className="dr-header">
+                <div className="dr-orb">
+                  <div className="dr-orb-inner"></div>
+                  <div className="dr-orb-ring"></div>
+                </div>
+                <div className="dr-title">
+                  <span className="dr-title-text">Deep Researching</span>
+                  <span className="dr-dots">...</span>
+                </div>
               </div>
-              <span className="thinking-label">
-                {mode === 'pro' ? 'กำลังวิจัยและวิเคราะห์...' : 'กำลังคิด...'}
-              </span>
-            </div>
-            <div className="thinking-content-live">
               {message.thinkingContent && (
-                <ReactMarkdown>{message.thinkingContent}</ReactMarkdown>
+                <div className="dr-content-window">
+                  <div className="dr-scanner"></div>
+                  <div className="dr-content-text">
+                    {message.thinkingContent}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Completed Thinking Section - แยกออกมานอกกรอบคำตอบ */}
-        {!message.isThinking && !message.isLoading && message.thinkingContent && (
-          <div className="thinking-section-completed">
-            <button 
-              className="thinking-toggle"
-              onClick={() => setShowThinking(!showThinking)}
-            >
-              <div className="thinking-toggle-content">
-                {mode === 'pro' ? (
-                  <>
-                    <span className="research-icon-small">•</span>
-                    <span style={{ color: '#ffffff' }}>กระบวนการวิจัย</span>
-                    <span className="research-badge">Pro Research</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="thinking-icon-small">•</span>
-                    <span style={{ color: '#ffffff' }}>กระบวนการคิด</span>
-                    <span className="thinking-badge">Thinking</span>
-                  </>
-                )}
+          {!message.isThinking && !message.isLoading && message.thinkingContent && mode === 'pro' && (
+            <div className={`dr-completed-container ${showThinking ? 'expanded' : ''}`}>
+              <button className="dr-toggle-btn" onClick={() => setShowThinking(!showThinking)}>
+                <div className="dr-toggle-left">
+                  <div className="dr-orb-static"></div>
+                  <span className="dr-toggle-title">Deep Research Complete</span>
+                </div>
+                <ChevronDown size={16} className="dr-chevron" />
+              </button>
+              
+              {showThinking && (
+                <div className="dr-completed-content">
+                  <div className="dr-content-text">
+                    {searchQuery ? highlightText(message.thinkingContent, searchQuery) : message.thinkingContent}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* --- MINIMALIST AI THINKING UI (NORMAL MODE) --- */}
+          {message.isThinking && mode !== 'pro' && (
+            <div className="ai-process-live">
+              <div className="ai-process-header pulsing">
+                <BrainCircuit size={14} className="pulse" />
+                <span>Analyzing...</span>
               </div>
-              <span className={`thinking-chevron ${showThinking ? 'open' : ''}`}>▼</span>
-            </button>
-            {showThinking && (
-              <div className="thinking-content-completed">
-                {searchQuery ? (
-                  <div>{highlightText(message.thinkingContent, searchQuery)}</div>
-                ) : (
-                  <ReactMarkdown>{message.thinkingContent}</ReactMarkdown>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              {message.thinkingContent && (
+                <div className="ai-process-content" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {message.thinkingContent}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!message.isThinking && !message.isLoading && message.thinkingContent && mode !== 'pro' && (
+            <div className={`ai-process-completed ${showThinking ? 'expanded' : ''}`}>
+              <button className="ai-process-toggle" onClick={() => setShowThinking(!showThinking)}>
+                <div className="ai-process-toggle-left">
+                  <BrainCircuit size={14} />
+                  <span>Thought Process</span>
+                </div>
+                <ChevronDown size={14} className="ai-process-chevron" />
+              </button>
+              
+              {showThinking && (
+                <div className="ai-process-content">
+                  {searchQuery ? (
+                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {highlightText(message.thinkingContent, searchQuery)}
+                    </div>
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {message.thinkingContent}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Message Content - กรอบคำตอบจริง */}
         <div className={`message-content ${message.isThinking ? 'waiting-for-thinking' : ''}`}>
